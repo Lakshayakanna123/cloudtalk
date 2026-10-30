@@ -1,0 +1,139 @@
+rules_version = '2';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CloudTalk Firestore Security Rules
+//
+// Principle: deny by default, allow only what is explicitly needed.
+// All reads and writes require authentication unless otherwise noted.
+//
+// Paths:
+//   users/{uid}                              — user profiles
+//   users/{uid}/conversations/{convId}       — per-user conversation metadata
+//   users/{uid}/fcmTokens/{token}            — FCM registration tokens
+//   conversations/{convId}                   — conversation documents
+//   conversations/{convId}/messages/{msgId}  — message subcollection
+// ─────────────────────────────────────────────────────────────────────────────
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helper functions ─────────────────────────────────────────────────────
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isAuthenticated() && request.auth.uid == uid;
+    }
+
+    function isParticipant(convData) {
+      return isAuthenticated() &&
+             request.auth.uid in convData.participantIds;
+    }
+
+    function isParticipantById(convId) {
+      let conv = get(/databases/$(database)/documents/conversations/$(convId));
+      return isAuthenticated() &&
+             request.auth.uid in conv.data.participantIds;
+    }
+
+    function validMessageCreate() {
+      let d = request.resource.data;
+      return d.senderId == request.auth.uid
+          && d.text is string
+          && d.text.size() > 0
+          && d.text.size() <= 2000
+          && d.type == 'text'
+          && d.createdAt == request.time
+          && d.updatedAt == request.time;
+    }
+
+    function allowedProfileFields() {
+      let allowed = ['displayName', 'photoURL', 'about', 'lastSeenAt', 'presenceStatus'];
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(allowed);
+    }
+
+    function allowedUserConvFields() {
+      let allowed = ['unreadCount', 'lastReadAt', 'isPinned', 'isArchived'];
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(allowed);
+    }
+
+    // ── Users ────────────────────────────────────────────────────────────────
+
+    match /users/{uid} {
+      // Any authenticated user can read a public profile (for discovery)
+      allow read: if isAuthenticated();
+
+      // Only the owner can create or update their own profile,
+      // and only permitted fields may be changed.
+      allow create: if isOwner(uid);
+      allow update: if isOwner(uid) && allowedProfileFields();
+
+      // Profiles are never deleted through the client
+      allow delete: if false;
+
+      // ── Per-user conversation metadata ─────────────────────────────────────
+      match /conversations/{convId} {
+        // Only the owning user can read their own conversation list entries
+        allow read:   if isOwner(uid);
+
+        // Only the owning user can update metadata like unreadCount, isPinned
+        // Cloud Functions handle lastMessageText / lastMessageAt updates
+        allow update: if isOwner(uid) && allowedUserConvFields();
+
+        // Creation is done through a backend transaction / Cloud Function;
+        // allow create here so the client-side transaction works correctly.
+        allow create: if isOwner(uid);
+
+        allow delete: if false;
+      }
+
+      // ── FCM tokens ──────────────────────────────────────────────────────────
+      match /fcmTokens/{token} {
+        // Only the token owner can read or write their tokens
+        allow read, write: if isOwner(uid);
+      }
+    }
+
+    // ── Conversations ─────────────────────────────────────────────────────────
+
+    match /conversations/{convId} {
+      // Only participants can read the conversation document
+      allow read: if isParticipant(resource.data);
+
+      // Conversation creation: the caller must include their own UID in participantIds.
+      // Uses a client-side transaction; server-side Cloud Function is preferred
+      // for production to prevent race conditions.
+      allow create: if isAuthenticated()
+                    && request.auth.uid in request.resource.data.participantIds
+                    && request.resource.data.participantIds.size() == 2
+                    && request.resource.data.type == 'direct';
+
+      // Only the trusted backend (Cloud Functions) may update conversation metadata.
+      // Frontend clients cannot change participantIds, lastMessage*, etc.
+      allow update: if false;
+
+      allow delete: if false;
+
+      // ── Messages ─────────────────────────────────────────────────────────────
+
+      match /messages/{messageId} {
+        // Only participants can read messages
+        allow read: if isParticipantById(convId);
+
+        // Only participants can create messages, with validated fields
+        allow create: if isParticipantById(convId) && validMessageCreate();
+
+        // Messages cannot be edited or deleted by clients
+        allow update: if false;
+        allow delete: if false;
+      }
+    }
+
+    // ── Catch-all: deny everything else ───────────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

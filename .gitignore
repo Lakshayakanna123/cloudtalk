@@ -1,0 +1,51 @@
+# CloudTalk
+
+## Secrets & Security
+.env
+.env.local
+.env.*.local
+*.env
+
+# Firebase Admin / Service Account credentials – NEVER COMMIT
+serviceAccountKey.json
+*-service-account.json
+firebase-adminsdk*.json
+
+# Node
+node_modules/
+dist/
+dist-ssr/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Firebase emulator
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+database-debug.log
+pubsub-debug.log
+
+# Test coverage
+coverage/
+
+# Functions build
+functions/lib/
