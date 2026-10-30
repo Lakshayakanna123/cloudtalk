@@ -10,9 +10,8 @@ import {
   limit,
   getDocs,
   serverTimestamp,
-  Timestamp,
 } from 'firebase/firestore';
-import { User } from 'firebase/auth';
+import type { User } from 'firebase/auth';
 import { db } from './firebase';
 import type { UserProfile, PublicUserProfile } from '../types';
 
@@ -25,16 +24,13 @@ export async function createUserProfile(user: User): Promise<void> {
   const snap = await getDoc(ref);
   if (snap.exists()) return; // Profile already exists
 
-  const profile: Omit<UserProfile, 'createdAt' | 'lastSeenAt'> & {
-    createdAt: ReturnType<typeof serverTimestamp>;
-    lastSeenAt: ReturnType<typeof serverTimestamp>;
-  } = {
+  const profile = {
     uid: user.uid,
     displayName: user.displayName ?? 'Anonymous',
     email: user.email ?? '',
     photoURL: user.photoURL ?? null,
     about: '',
-    presenceStatus: 'offline',
+    presenceStatus: 'offline' as const,
     createdAt: serverTimestamp(),
     lastSeenAt: serverTimestamp(),
   };
@@ -47,7 +43,7 @@ export async function createUserProfile(user: User): Promise<void> {
 export async function getUserProfile(uid: string): Promise<UserProfile | null> {
   const snap = await getDoc(doc(db, USERS_COLLECTION, uid));
   if (!snap.exists()) return null;
-  return { id: snap.id, ...snap.data() } as unknown as UserProfile;
+  return { ...(snap.data() as UserProfile) };
 }
 
 // ─── Update own profile ──────────────────────────────────────────────────────

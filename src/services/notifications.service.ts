@@ -1,9 +1,8 @@
 import {
   getToken,
   onMessage,
-  Messaging,
-  MessagePayload,
 } from 'firebase/messaging';
+import type { Messaging, MessagePayload } from 'firebase/messaging';
 import {
   doc,
   setDoc,
@@ -15,10 +14,6 @@ import { db, messagingPromise } from './firebase';
 const VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY as string | undefined;
 
 // ─── Register FCM token for the current user ─────────────────────────────────
-// Tokens are stored under users/{uid}/fcmTokens/{token} so that:
-//   - Each token is uniquely keyed (no duplicates)
-//   - Security rules can enforce that only the owner can write/delete their token
-//   - Cloud Functions can iterate tokens for a user to send notifications
 
 export async function registerFCMToken(uid: string): Promise<string | null> {
   if (!VAPID_KEY) {
@@ -33,9 +28,10 @@ export async function registerFCMToken(uid: string): Promise<string | null> {
   }
 
   try {
+    const swReg = await navigator.serviceWorker.getRegistration('/firebase-messaging-sw.js');
     const token = await getToken(messaging, {
       vapidKey: VAPID_KEY,
-      serviceWorkerRegistration: await navigator.serviceWorker.getRegistration('/firebase-messaging-sw.js'),
+      serviceWorkerRegistration: swReg,
     });
 
     if (!token) return null;

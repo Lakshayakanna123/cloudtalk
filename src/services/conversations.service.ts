@@ -2,7 +2,6 @@ import {
   collection,
   doc,
   getDoc,
-  getDocs,
   query,
   where,
   orderBy,
@@ -11,10 +10,8 @@ import {
   updateDoc,
   runTransaction,
   serverTimestamp,
-  Unsubscribe,
-  Timestamp,
-  writeBatch,
 } from 'firebase/firestore';
+import type { Unsubscribe } from 'firebase/firestore';
 import { db } from './firebase';
 import type { Conversation, UserConversation, ConversationListItem } from '../types';
 import { getPublicProfile } from './users.service';
@@ -154,5 +151,5 @@ export async function markConversationRead(
 export async function getConversation(conversationId: string): Promise<Conversation | null> {
   const snap = await getDoc(doc(db, CONVERSATIONS_COL, conversationId));
   if (!snap.exists()) return null;
-  return { id: snap.id, ...snap.data() } as Conversation;
+  return { id: snap.id, ...(snap.data() as Omit<Conversation, 'id'>) };
 }

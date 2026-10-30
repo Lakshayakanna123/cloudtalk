@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { ArrowLeft, MoreVertical, MessageCircle } from 'lucide-react';
+import { ArrowLeft, MessageCircle } from 'lucide-react';
+import type { Timestamp } from 'firebase/firestore';
 import { MessageBubble } from './MessageBubble';
 import { MessageComposer } from './MessageComposer';
 import { Avatar } from '../ui/Avatar';
@@ -10,6 +11,19 @@ import { markConversationRead } from '../../services/conversations.service';
 import type { ConversationListItem, Message } from '../../types';
 import { formatRelativeTime } from '../../utils';
 import { clsx } from 'clsx';
+
+// Lightweight Timestamp-compatible shape for optimistic messages
+function makeOptimisticTimestamp(): Timestamp {
+  const now = Date.now();
+  return {
+    seconds: Math.floor(now / 1000),
+    nanoseconds: 0,
+    toDate: () => new Date(now),
+    toMillis: () => now,
+    isEqual: () => false,
+    valueOf: () => `${Math.floor(now / 1000)}.000000000`,
+  } as unknown as Timestamp;
+}
 
 interface ChatWindowProps {
   conversation: ConversationListItem;
@@ -55,14 +69,15 @@ export function ChatWindow({ conversation, currentUid, onBack }: ChatWindowProps
   const handleSend = useCallback(
     async (text: string) => {
       const tempId = `local-${Date.now()}`;
+      const ts = makeOptimisticTimestamp();
       const optimisticMsg: Message = {
         id: tempId,
         conversationId,
         senderId: currentUid,
         text,
         type: 'text',
-        createdAt: { toMillis: () => Date.now(), toDate: () => new Date() } as any,
-        updatedAt: { toMillis: () => Date.now(), toDate: () => new Date() } as any,
+        createdAt: ts,
+        updatedAt: ts,
         status: 'sending',
       };
 

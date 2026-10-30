@@ -5,20 +5,17 @@ import {
   query,
   orderBy,
   limit,
-  startAfter,
   onSnapshot,
   serverTimestamp,
-  DocumentSnapshot,
-  Unsubscribe,
-  Timestamp,
 } from 'firebase/firestore';
+import type { Unsubscribe } from 'firebase/firestore';
 import { db } from './firebase';
 import type { Message } from '../types';
 
 const CONVERSATIONS_COL = 'conversations';
 const MESSAGES_SUBCOL = 'messages';
-const MAX_MESSAGE_LENGTH = 2000;
-const PAGE_SIZE = 30;
+export const MAX_MESSAGE_LENGTH = 2000;
+export const PAGE_SIZE = 30;
 
 // ─── Subscribe to the latest messages in a conversation ──────────────────────
 
@@ -73,5 +70,3 @@ export async function sendMessage(
 
   return ref.id;
 }
-
-export { MAX_MESSAGE_LENGTH, PAGE_SIZE };

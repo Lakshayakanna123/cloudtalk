@@ -1,7 +1,8 @@
 import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
-import { useAuthContext } from '../app/providers/AuthContext';
-import { Spinner } from '../components/ui/Spinner';
+import { useAuthContext } from '../../app/providers/AuthContext';
+import { Spinner } from '../../components/ui/Spinner';
+
 
 /** Redirects unauthenticated users to /login. Shows a spinner while auth initializes. */
 export function ProtectedRoute() {

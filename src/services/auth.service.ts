@@ -6,8 +6,9 @@ import {
   updateProfile,
   GoogleAuthProvider,
   signInWithPopup,
-  User,
 } from 'firebase/auth';
+import type { User } from 'firebase/auth';
+
 import { auth } from './firebase';
 import { createUserProfile } from './users.service';
 

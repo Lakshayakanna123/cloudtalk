@@ -1,18 +1,24 @@
-import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
-import { getAuth, Auth, connectAuthEmulator } from 'firebase/auth';
+import { initializeApp, getApps } from 'firebase/app';
+import type { FirebaseApp } from 'firebase/app';
+import { getAuth, connectAuthEmulator } from 'firebase/auth';
+import type { Auth } from 'firebase/auth';
 import {
   getFirestore,
-  Firestore,
   connectFirestoreEmulator,
 } from 'firebase/firestore';
+import type { Firestore } from 'firebase/firestore';
 import {
   getMessaging,
-  Messaging,
   isSupported,
 } from 'firebase/messaging';
-import { getFunctions, Functions, connectFunctionsEmulator } from 'firebase/functions';
+import type { Messaging } from 'firebase/messaging';
+import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
+import type { Functions } from 'firebase/functions';
 
 // ─── Config validation ────────────────────────────────────────────────────────
+// Skip validation in Vitest test environments (import.meta.env.MODE = 'test')
+
+const IS_TEST = import.meta.env.MODE === 'test';
 
 const REQUIRED_VARS = [
   'VITE_FIREBASE_API_KEY',
@@ -23,12 +29,14 @@ const REQUIRED_VARS = [
   'VITE_FIREBASE_APP_ID',
 ] as const;
 
-const missing = REQUIRED_VARS.filter((k) => !import.meta.env[k]);
-if (missing.length > 0) {
-  throw new Error(
-    `[CloudTalk] Missing Firebase configuration: ${missing.join(', ')}.\n` +
-      'Copy .env.example to .env.local and fill in your Firebase project values.'
-  );
+if (!IS_TEST) {
+  const missing = REQUIRED_VARS.filter((k) => !import.meta.env[k]);
+  if (missing.length > 0) {
+    throw new Error(
+      `[CloudTalk] Missing Firebase configuration: ${missing.join(', ')}.\n` +
+        'Copy .env.example to .env.local and fill in your Firebase project values.'
+    );
+  }
 }
 
 const firebaseConfig = {
@@ -55,11 +63,10 @@ export const db: Firestore = getFirestore(app);
 export const functions: Functions = getFunctions(app);
 
 // Messaging is not available in all environments (e.g., Firefox private mode,
-// some Node.js contexts during tests). We export a promise so callers can
-// await support before using it.
-export const messagingPromise: Promise<Messaging | null> = isSupported().then(
-  (supported) => (supported ? getMessaging(app) : null)
-);
+// Node.js test contexts). We export a promise so callers can await support.
+export const messagingPromise: Promise<Messaging | null> = isSupported()
+  .then((supported) => (supported ? getMessaging(app) : null))
+  .catch((): null => null);
 
 // ─── Emulator connections (development only) ──────────────────────────────────
 

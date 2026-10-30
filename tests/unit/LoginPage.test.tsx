@@ -1,31 +1,30 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 
-// ─── Mock react-router-dom navigate ──────────────────────────────────────────
+// ─── Vitest hoisting — vi.mock is hoisted to top, so factories must not
+// reference variables declared after the mock call. Use vi.hoisted() instead.
 
-const mockNavigate = vi.fn();
+const { mockLogin, mockSignInWithGoogle } = vi.hoisted(() => ({
+  mockLogin: vi.fn(),
+  mockSignInWithGoogle: vi.fn(),
+}));
+
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');
   return {
     ...(actual as object),
-    useNavigate: () => mockNavigate,
+    useNavigate: () => vi.fn(),
   };
 });
 
-// ─── Mock auth service ───────────────────────────────────────────────────────
-
-const mockLogin = vi.fn();
-const mockSignInWithGoogle = vi.fn();
 vi.mock('../../src/services/auth.service', () => ({
   login: mockLogin,
   signInWithGoogle: mockSignInWithGoogle,
   getAuthErrorMessage: (code: string) => `Error: ${code}`,
 }));
-
-// ─── Import after mocks ───────────────────────────────────────────────────────
 
 import { LoginPage } from '../../src/pages/LoginPage';
 
@@ -36,8 +35,6 @@ function renderLogin() {
     </MemoryRouter>
   );
 }
-
-// ─── Tests ───────────────────────────────────────────────────────────────────
 
 describe('LoginPage', () => {
   beforeEach(() => {
